@@ -38,11 +38,57 @@ for i in range(0,2):
         for card in cards:
             deck.append(Card(suits_value[suit], card, cards_value[card]))
 
+# Prints out the deck
 # for i in range(0, 104):
 #     print(f"{deck[i].card}{deck[i].suit}")
 # for i in range(0, 104):
 #     print(deck[i].__dict__)
 
+
+# Starts the game the first time
+def start():
+    print("Welcome to Blackjack by Daniele-M.")
+    print("Are you ready to play, or do you want some information?")
+    while True:
+        info = input("(Press 0 to play or i for info)\n> ")
+        if info == "0":
+            core_game(SHUFFLE=True)
+        elif info == "i" or info == "1":
+            display_info()
+        else:
+            print("I didnt' understand.\n")
+
+# Displays the game rules
+def display_info():
+    print("""
+            This game of Blackjack works with the following rules:
+            -----------------------------------------------------------------------
+
+            Two decks of cards, randomly shuffled once at the beginning of the game.
+            Dealear recives only one card faced upwards, and stops drawing at 17.
+
+            Blackjack: If you score 21 in your first hand, you have a blackjack.
+                        This means that if you win that hand you will get 1.5 of your original bet.
+
+            The following rules can only take place in the first turn:
+
+            Surrender: You can surrender, losing only half of your original bet.
+
+            Split: If you have two cards of the same value (like two figures) you can split.
+                   When you split you divide your cards and you will play with two hands at the same time.
+                   On your second hand, the same bet will be applied.
+
+            Double Down: If your score is between 9 and 11 you can decide to double down.
+                         This will double your original bet but you can only draw one more card.
+
+            Insurance: If the dealer has one Ace you can make an insurance.
+                       This will place another bet equivalent of a half of your original bet.
+                       This is a side bet and if the dealer scores a blackjack you will recive 2*(insurance bet).
+
+
+            More information about blackjack: https://en.wikipedia.org/wiki/Blackjack
+            (Note that not all the rules are the same, double check if in doubt)
+    """)
 
 # Gets the bet for a minimum of 10
 def place_bet():
@@ -69,16 +115,19 @@ def check_split_doubledown_insurance():
 
     # Check if split is possible
     if player_hand[0].value == player_hand[1].value:
-        possible_moves.append("split")
+        if money[1] * 2 <= money[0]:
+            possible_moves.append("split")
     # Check if double down is possible
     if score(player_hand) >= 9 and score(player_hand) <= 11:
-        possible_moves.append("doubledown")
+        if money[1] * 2 <= money[0]:
+            possible_moves.append("doubledown")
     # Check if insurance is possible
     if dealer_hand[0].value == 11:
-        possible_moves.append("insurance")
+        if money[1]/2 + money[1] <= money[0]:
+            possible_moves.append("insurance")
 
 
-    print("You can:  surrender  keep playing  ", end=" ")
+    print("You can:  surrender  keep playing", end="  ")
     for i in possible_moves:
         print(f"{i}", end=" ")
     print("\nType 0 if you want to go to the drawing phase.")
@@ -91,20 +140,11 @@ def check_split_doubledown_insurance():
             if choice == "0":
                 return
             elif choice == "split":
-                if money[1] * 2 > money[0]:
-                    print("You don't have enouh money for this.")
-                else:
-                    split()
+                split()
             elif choice == "doubledown":
-                if money[1] * 2 > money[0]:
-                    print("You don't have enouh money for this.")
-                else:
-                    double_down()
+                double_down()
             elif choice == "insurance":
-                if money[1]/2 + money[1] > money[0]:
-                    print("You don't have enouh money for this.")
-                else:
-                    insurance()
+                insurance()
             elif choice == "surrender":
                 surrender()
             else:
@@ -225,20 +265,37 @@ def double_down():
 
 
 def insurance():
+
     ins = money[1]/2
+    money[1] += ins
+    print(f"You make an insurance of {ins} coins.")
 
     draw_card("player")
-    draw_card("dealer")
+    dealer_hand.append(deck.pop(0))
+    check_overflow(dealer_hand)
+    show_hand(dealer_hand)
 
     if score(dealer_hand) == 21:
         print("The dealer scored 21 but you have an insurance.")
         print("Nothing was lost this turn.")
         end_game("insurance")
-    elif score(player_hand) < score(dealer_hand):
-        money[1] += ins
+    elif score(dealer_hand) < 17:
+         while score(dealer_hand) < 17:
+             dealer_hand.append(deck.pop(0))
+             show_hand(dealer_hand)
+             check_overflow(dealer_hand)
+
+    if score(dealer_hand) > 21:
+        money[1] -= (2*ins)
+        end_game("player")
+    if score(player_hand) < score(dealer_hand):
         end_game("dealer")
+    elif score(player_hand) == score(dealer_hand):
+        print("It's a tie, you will pay your insurance.")
+        money[0] -= ins
+        end_game("insurance")
     else:
-        money[1] -= ins
+        money[1] -= (2*ins)
         end_game("player")
 
 
@@ -278,20 +335,21 @@ def end_game(winner):
             exit(0)
 
     print(f"Your balance is now {money[0]} coins.\n")
-    play_again = input("Do you want to keep playing?\n> ")
+    while True:
+        play_again = input("Do you want to keep playing?\nPress y to play again, n to stop, i for info\n> ")
 
-    if play_again == "y" or play_again == "yes":
-
-        print("\nPreparing a new game...\n")
-        for card in range(0, len(player_hand)):
-            deck.append(player_hand.pop(0))
-        for card in range(0, len(dealer_hand)):
-            deck.append(dealer_hand.pop(0))
-        core_game()
-
-    else:
-        print("See you next time!")
-        exit(0)
+        if play_again == "i" or play_again == "info":
+            display_info()
+        elif play_again == "y" or play_again == "yes":
+            print("\nPreparing a new game...\n")
+            for card in range(0, len(player_hand)):
+                deck.append(player_hand.pop(0))
+            for card in range(0, len(dealer_hand)):
+                deck.append(dealer_hand.pop(0))
+            core_game()
+        else:
+            print("See you next time!")
+            exit(0)
 
 
 #Checks of the value of the card exceed 21
@@ -394,4 +452,5 @@ def core_game(SHUFFLE=False):          # Shuffle only the first turn
     else:
         end_game("tie")
 
-core_game(SHUFFLE=True)
+
+start()
